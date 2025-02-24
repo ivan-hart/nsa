@@ -1,0 +1,46 @@
+
+# Nomad Space Agency
+
+I wanted to try and make a space agency simulator similar to Kerbal Space Program but in Odin using OpenGL. 
+
+
+## Installation
+
+To install clone this repo and run:
+
+```bash
+  chmod +x build.sh
+  ./build.sh build run
+```
+    
+## Features
+
+- 3D rendering engine using OpenGl
+- Real time and simulated physics
+- Sandbox rocket building
+
+
+
+## FAQ
+
+#### What was the primary motivator to start this project?
+
+I was in complete shock over the state of Kerbal Space Program 2 and decided that I'd take a wack at it to see how difficult it is. Plus it's a nice project to learn more about 3D graphics.
+
+#### Why Odin?
+
+I choose to use Odin as it provided me with the comfort of a more modern approach to a systems language but with less overhead like rust.
+
+#### Why OpenGL?
+
+I choose OpenGL over vulkan or direct x because I'm not familiar enough with both of those with the scope of this project in mind.
+
+#### Why so many spelling mistakes?
+
+I suck at spelling lol
+
+
+## Authors
+
+- [@ivan-hart](https://www.github.com/ivan-hart)
+
