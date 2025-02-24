@@ -9,12 +9,20 @@ import ecs "ecs"
 import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 
+Camera :: struct {
+	view:       glm.mat4,
+	projection: glm.mat4,
+}
+camera: Camera
+
 // Component Definitions
 Input :: struct {
 	up:    sdl.Scancode,
 	down:  sdl.Scancode,
 	left:  sdl.Scancode,
 	right: sdl.Scancode,
+	jump:  sdl.Scancode,
+	crouch:sdl.Scancode,
 }
 
 Transform :: struct {
@@ -26,25 +34,10 @@ Renderable :: struct {
 	indices_count: i32,
 }
 
-input_system :: proc(registry: ^ecs.Registry, event: sdl.Event, keys: [^]bool) {
-	for entity in registry.entities {
-		transform := ecs.registry_get_component(registry, entity, Transform)
-		input := ecs.registry_get_component(registry, entity, Input)
+// TODO: add support for events?
+// input_system :: proc(registry: ^ecs.Registry, event: sdl.Event, keys: [^]bool) {
 
-		if keys[input.up] {
-			transform.model += glm.mat4Translate({0, 1, 0})
-		}
-		if keys[input.down] {
-			transform.model += glm.mat4Translate({0, -1, 0})
-		}
-		if keys[input.left] {
-			transform.model += glm.mat4Translate({-1, 0, 0})
-		}
-		if keys[input.right] {
-			transform.model += glm.mat4Translate({1, 0, 0})
-		}
-	}
-}
+// }
 
 // Systems
 render_system :: proc(registry: ^ecs.Registry, program: u32) {
@@ -54,12 +47,9 @@ render_system :: proc(registry: ^ecs.Registry, program: u32) {
 		renderable := ecs.registry_get_component(registry, entity, Renderable)
 		if transform == nil || renderable == nil do continue
 
-		gl.UniformMatrix4fv(
-			gl.GetUniformLocation(program, "model"),
-			1,
-			gl.FALSE,
-			&transform.model[0, 0],
-		)
+		mvp := transform.model * camera.projection * camera.view
+
+		gl.UniformMatrix4fv(gl.GetUniformLocation(program, "mvp"), 1, gl.FALSE, &mvp[0][0])
 		gl.BindVertexArray(renderable.vao)
 		gl.DrawElements(gl.TRIANGLES, renderable.indices_count, gl.UNSIGNED_SHORT, nil)
 	}
@@ -86,6 +76,7 @@ main :: proc() {
 
 	gl.load_up_to(4, 6, sdl.gl_set_proc_address)
 
+	gl.Enable(gl.DEPTH_TEST)
 	gl.Viewport(0, 0, 800, 450)
 	gl.ClearColor(0.1, 0.1, 0.3, 1.0)
 
@@ -97,6 +88,19 @@ main :: proc() {
 	program, p_ok := gl.load_shaders_file(vs_path, fs_path)
 	if !p_ok {
 		fmt.printfln("Failed to create shader program!")
+	}
+
+	delete(vs_path)
+	delete(fs_path)
+
+	camera = Camera {
+		view       = glm.mat4{
+            1, 0, 0, 0, 
+            0, 1, 0, 0, 
+            0, 0, 1, 0, 
+            0, 0, 0, 1
+        },
+		projection = glm.mat4Perspective(glm.radians(f32(60)), 800.0 / 450.0, 0.001, 1000.0),
 	}
 
 	// Create square geometry
@@ -152,26 +156,52 @@ main :: proc() {
 	square := ecs.registry_create_entity(&registry)
 	ecs.registry_add_component(&registry, square, Transform{glm.mat4(1)})
 	ecs.registry_add_component(&registry, square, Renderable{vao, i32(len(indices))})
-	ecs.registry_add_component(&registry, square, Input{.W, .S, .A, .D})
+
+	camera_input := Input{.W, .S, .A, .D, .SPACE, .C}
 
 	sdl.ShowWindow(window)
 
 	// Main loop
 	running := true
 	for running {
+		keys := sdl.GetKeyboardState(nil)
+
 		// Event handling
 		e: sdl.Event
 		for sdl.PollEvent(&e) {
 			#partial switch e.type {
 			case .QUIT:
 				running = false
+			case .KEY_DOWN:
 			}
-			input_system(&registry, e, sdl.GetKeyboardState(nil))
 		}
 
+		if keys[camera_input.up] {
+			camera.view[3].z += +1 * +0.016
+		}
+		if keys[camera_input.down] {
+			camera.view[3].z += -1 * +0.016
+		}
+		if keys[camera_input.left] {
+			camera.view[3].x += +1 * +0.016
+		}
+		if keys[camera_input.right] {
+			camera.view[3].x += -1 * +0.016
+		}
+		if keys[camera_input.jump] {
+			camera.view[3].y += -1 * +0.016
+		}
+		if keys[camera_input.crouch] {
+			camera.view[3].y += +1 * +0.016
+		}
+		fmt.println(camera.view[3])
+
+
 		// Rendering
-		gl.Clear(gl.COLOR_BUFFER_BIT)
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 		render_system(&registry, program)
 		sdl.GL_SwapWindow(window)
+
+		sdl.Delay(16)
 	}
 }
