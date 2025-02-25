@@ -7,7 +7,8 @@ import gl "vendor:OpenGL"
 
 Window :: struct {
     sdl_window : ^sdl.Window,
-    gl_ctx : sdl.GLContext    
+    gl_ctx : sdl.GLContext,
+    width, height : i32
 }
 
 get_instance :: proc() -> ^Window {
@@ -15,7 +16,7 @@ get_instance :: proc() -> ^Window {
     return &window
 }
 
-init :: proc() -> bool {
+init :: proc(title : cstring, width, height: i32) -> bool {
     window := get_instance()
 
     if !sdl.Init({.VIDEO}) {
@@ -27,7 +28,7 @@ init :: proc() -> bool {
     sdl.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, 4);
     sdl.GL_SetAttribute(.CONTEXT_MINOR_VERSION, 6);
 
-    sdl_window := sdl.CreateWindow("Window Title", 800, 450, sdl.WINDOW_HIDDEN | sdl.WINDOW_OPENGL)
+    sdl_window := sdl.CreateWindow(title, width, height, sdl.WINDOW_HIDDEN | sdl.WINDOW_OPENGL)
     if sdl_window == nil {
         sdl.Log("Failed to create SDL_Window!: %s", sdl.GetError())
         sdl.Quit()
@@ -45,11 +46,13 @@ init :: proc() -> bool {
     gl.load_up_to(4, 6, sdl.gl_set_proc_address)
 
     gl.Enable(gl.DEPTH_TEST)
-	gl.Viewport(0, 0, 800, 450)
+	gl.Viewport(0, 0, width, height)
 	gl.ClearColor(0.1, 0.1, 0.3, 1.0)
 
     window.sdl_window = sdl_window
     window.gl_ctx = ctx
+    window.width = width
+    window.height = height
 
     return true
 }
@@ -72,6 +75,12 @@ close :: proc() {
     sdl.GL_DestroyContext(window.gl_ctx)
     sdl.DestroyWindow(window.sdl_window)
     sdl.Quit()
+}
+
+clear :: proc() {
+    win := get_instance()
+
+    gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
 swap :: proc() {
